@@ -46,11 +46,18 @@
     .demo-btn:hover:not(.active) { color: #ccc; border-color: #444; }
 
     /* ── iPhone 16 frame ── */
+    @keyframes phoneEntrance {
+      0%   { opacity: 0; transform: scale(0.62) translateY(48px); }
+      70%  { transform: scale(0.77) translateY(-6px); }
+      100% { opacity: 1; transform: scale(0.75) translateY(0); }
+    }
+
     .iphone-frame {
       position: relative; width: 430px; flex-shrink: 0;
       transform: scale(0.75);
       transform-origin: top center;
       margin-bottom: -220px;
+      animation: phoneEntrance 0.9s cubic-bezier(0.34, 1.2, 0.64, 1) both;
     }
     .iphone-chassis {
       position: relative;
@@ -129,8 +136,19 @@
     .usbc-port { position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%); width: 54px; height: 6px; background: #080808; border-radius: 3px 3px 0 0; }
 
     /* ── Screen system ── */
+    @keyframes screenSlideInRight {
+      from { opacity: 0; transform: translateX(40px) scale(0.97); }
+      to   { opacity: 1; transform: translateX(0) scale(1); }
+    }
+    @keyframes screenSlideInLeft {
+      from { opacity: 0; transform: translateX(-40px) scale(0.97); }
+      to   { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
     .screen { display: none; min-height: 852px; background: #000; color: #fff; }
     .screen.active { display: block; }
+    .screen.enter-right { animation: screenSlideInRight 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+    .screen.enter-left  { animation: screenSlideInLeft  0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
 
     /* ── Status bar ── */
     .status-bar {
@@ -1539,16 +1557,29 @@
   }, 5000);
 
   // ── Screen switcher ──
+  const screenOrder = ['my-profile', 'friend-profile', 'public-profile'];
+  let currentScreenIndex = 0;
+
   function showScreen(name, _btn) {
-    // update demo buttons
+    const newIndex = screenOrder.indexOf(name);
+    const direction = newIndex > currentScreenIndex ? 'enter-right' : 'enter-left';
+
     document.querySelectorAll('.demo-btn').forEach((b, i) => {
-      const names = ['my-profile', 'friend-profile', 'public-profile'];
-      b.classList.toggle('active', names[i] === name);
+      b.classList.toggle('active', screenOrder[i] === name);
     });
-    // swap screen
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('screen-' + name).classList.add('active');
-    // scroll to top
+
+    document.querySelectorAll('.screen').forEach(s => {
+      s.classList.remove('active', 'enter-right', 'enter-left');
+    });
+
+    const next = document.getElementById('screen-' + name);
+    next.classList.add('active');
+    if (newIndex !== currentScreenIndex) {
+      next.classList.add(direction);
+      next.addEventListener('animationend', () => next.classList.remove(direction), { once: true });
+    }
+
+    currentScreenIndex = newIndex;
     document.querySelector('.iphone-screen').scrollTop = 0;
     reObserve();
   }
