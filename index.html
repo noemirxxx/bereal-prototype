@@ -1506,7 +1506,7 @@
     const badge = count ? `<div class="pin-badge">${count}</div>` : '';
     return L.divIcon({
       className: '',
-      html: `<div class="photo-marker"><img src="${src}" />${badge}</div>`,
+      html: `<div class="photo-marker"><img src="${src}" style="width:44px!important;height:58px!important;object-fit:cover!important;display:block!important;" />${badge}</div>`,
       iconSize: [44, 58],
       iconAnchor: [22, 29]
     });
