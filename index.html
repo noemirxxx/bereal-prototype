@@ -136,19 +136,14 @@
     .usbc-port { position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%); width: 54px; height: 6px; background: #080808; border-radius: 3px 3px 0 0; }
 
     /* ── Screen system ── */
-    @keyframes screenSlideInRight {
-      from { opacity: 0; transform: translateX(40px) scale(0.97); }
-      to   { opacity: 1; transform: translateX(0) scale(1); }
-    }
-    @keyframes screenSlideInLeft {
-      from { opacity: 0; transform: translateX(-40px) scale(0.97); }
-      to   { opacity: 1; transform: translateX(0) scale(1); }
+    @keyframes screenSlideUp {
+      from { opacity: 0; transform: translateY(40px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     .screen { display: none; min-height: 852px; background: #000; color: #fff; }
     .screen.active { display: block; }
-    .screen.enter-right { animation: screenSlideInRight 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
-    .screen.enter-left  { animation: screenSlideInLeft  0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+    .screen.enter-up { animation: screenSlideUp 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
 
     /* ── Status bar ── */
     .status-bar {
@@ -1562,21 +1557,19 @@
 
   function showScreen(name, _btn) {
     const newIndex = screenOrder.indexOf(name);
-    const direction = newIndex > currentScreenIndex ? 'enter-right' : 'enter-left';
-
     document.querySelectorAll('.demo-btn').forEach((b, i) => {
       b.classList.toggle('active', screenOrder[i] === name);
     });
 
     document.querySelectorAll('.screen').forEach(s => {
-      s.classList.remove('active', 'enter-right', 'enter-left');
+      s.classList.remove('active', 'enter-up');
     });
 
     const next = document.getElementById('screen-' + name);
     next.classList.add('active');
     if (newIndex !== currentScreenIndex) {
-      next.classList.add(direction);
-      next.addEventListener('animationend', () => next.classList.remove(direction), { once: true });
+      next.classList.add('enter-up');
+      next.addEventListener('animationend', () => next.classList.remove('enter-up'), { once: true });
     }
 
     currentScreenIndex = newIndex;
