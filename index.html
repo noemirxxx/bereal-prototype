@@ -479,44 +479,33 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.9);
     }
 
-    .highlights-section { padding: 16px 0 8px; }
-    .highlights-month-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 16px; margin-bottom: 10px;
+    .highlights-section { padding: 16px 16px 8px; }
+    .highlights-month-label { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+    .highlights-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px; margin-bottom: 12px;
     }
-    .highlights-month-label { font-size: 14px; font-weight: 700; }
-    .lets-go-btn {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 8px; padding: 5px 14px;
-      font-size: 12px; font-weight: 600;
-      cursor: pointer; color: #fff;
-      font-family: var(--font);
-    }
-    .highlights-scroll {
-      display: flex; gap: 10px;
-      padding: 8px 16px 16px;
-      overflow-x: auto; scrollbar-width: none;
-    }
-    .highlights-scroll::-webkit-scrollbar { display: none; }
     .highlight-cell {
-      position: relative; flex-shrink: 0;
-      width: 110px; aspect-ratio: 3/4;
+      position: relative; aspect-ratio: 3/4;
       border-radius: 12px; overflow: hidden; cursor: pointer;
     }
     .highlight-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .highlight-cell-date {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      padding: 18px 8px 7px;
-      background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
-      font-size: 10px; font-weight: 700;
-      color: rgba(255,255,255,0.9);
+      position: absolute; bottom: 8px; left: 10px;
+      font-size: 11px; font-weight: 700;
+      color: rgba(255,255,255,0.85);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
     }
-    /* slight random tilts for the polaroid feel */
-    .highlight-cell:nth-child(2n)   { transform: rotate(1.5deg);  }
-    .highlight-cell:nth-child(3n)   { transform: rotate(-2deg);   }
-    .highlight-cell:nth-child(4n)   { transform: rotate(1deg);    }
-    .highlight-cell:nth-child(5n)   { transform: rotate(-1.5deg); }
+    .lets-go-btn {
+      display: inline-block;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 8px; padding: 7px 16px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; color: #fff; margin-bottom: 14px;
+      font-family: var(--font);
+    }
     .see-all-btn {
       display: block; text-align: center;
       padding: 16px; font-size: 14px; font-weight: 600;
@@ -1012,51 +1001,63 @@
 
             <!-- Highlights -->
             <div class="highlights-section">
-              <div class="highlights-month-row reveal">
-                <div class="highlights-month-label" style="font-size:16px;">Highlights</div>
+              <div class="highlights-month-label reveal" style="font-size:16px;margin-bottom:14px;">Highlights</div>
+
+              <div class="highlights-month-label">April</div>
+              <button class="lets-go-btn">Let's go →</button>
+              <div class="highlights-grid reveal-stagger">
+                <div class="highlight-cell">
+                  <img src="Profile/Pin2Abby.png" />
+                  <div class="highlight-cell-date">April 13</div>
+                </div>
+                <div class="highlight-cell">
+                  <img src="Profile/Pin3Abby.png" />
+                  <div class="highlight-cell-date">April 8</div>
+                </div>
               </div>
 
-              <div class="highlights-month-row reveal">
-                <div class="highlights-month-label">April</div>
-                <button class="lets-go-btn">Let's go →</button>
-              </div>
-              <div class="highlights-scroll reveal-stagger">
-                <div class="highlight-cell"><img src="Profile/Pin2Abby.png" /><div class="highlight-cell-date">April 13</div></div>
-                <div class="highlight-cell"><img src="Profile/Pin3Abby.png" /><div class="highlight-cell-date">April 8</div></div>
-                <div class="highlight-cell"><img src="Profile/Pin1Abby.png" /><div class="highlight-cell-date">April 2</div></div>
+              <div class="highlights-month-label" style="margin-top:10px;">December 20</div>
+              <div class="highlights-grid reveal-stagger">
+                <div class="highlight-cell" style="grid-column:1/-1;aspect-ratio:3/4;">
+                  <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80" />
+                  <div class="highlight-cell-date">December 20</div>
+                </div>
               </div>
 
-              <div class="highlights-month-row reveal">
-                <div class="highlights-month-label">December 20</div>
-              </div>
-              <div class="highlights-scroll reveal-stagger">
-                <div class="highlight-cell"><img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&q=80" /><div class="highlight-cell-date">December 20</div></div>
-                <div class="highlight-cell"><img src="https://images.unsplash.com/photo-1501854140801-50d01698950b?w=300&q=80" /><div class="highlight-cell-date">December 24</div></div>
-              </div>
-
-              <div class="highlights-month-row reveal">
-                <div class="highlights-month-label">January 1</div>
-              </div>
-              <div class="highlights-scroll reveal-stagger">
-                <div class="highlight-cell"><img src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=300&q=80" /><div class="highlight-cell-date">January 1</div></div>
-                <div class="highlight-cell"><img src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=300&q=80" /><div class="highlight-cell-date">January 3</div></div>
-                <div class="highlight-cell"><img src="https://images.unsplash.com/photo-1439853949212-36589f1383a1?w=300&q=80" /><div class="highlight-cell-date">January 7</div></div>
+              <div class="highlights-month-label" style="margin-top:10px;">January 1</div>
+              <div class="highlights-grid reveal-stagger">
+                <div class="highlight-cell">
+                  <img src="https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&q=80" />
+                  <div class="highlight-cell-date">January 1</div>
+                </div>
+                <div class="highlight-cell">
+                  <img src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&q=80" />
+                  <div class="highlight-cell-date">January 3</div>
+                </div>
               </div>
 
-              <div class="highlights-month-row reveal">
-                <div class="highlights-month-label">August 13</div>
-              </div>
-              <div class="highlights-scroll reveal-stagger">
-                <div class="highlight-cell"><img src="https://images.unsplash.com/photo-1519046904884-53103b34b206?w=300&q=80" /><div class="highlight-cell-date">August 13</div></div>
-                <div class="highlight-cell"><img src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=300&q=80" /><div class="highlight-cell-date">August 20</div></div>
+              <div class="highlights-month-label" style="margin-top:10px;">August 13</div>
+              <div class="highlights-grid reveal-stagger">
+                <div class="highlight-cell">
+                  <img src="https://images.unsplash.com/photo-1519046904884-53103b34b206?w=400&q=80" />
+                  <div class="highlight-cell-date">August 13</div>
+                </div>
+                <div class="highlight-cell">
+                  <img src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=400&q=80" />
+                  <div class="highlight-cell-date">August 20</div>
+                </div>
               </div>
 
-              <div class="highlights-month-row reveal">
-                <div class="highlights-month-label">May 30</div>
-              </div>
-              <div class="highlights-scroll reveal-stagger">
-                <div class="highlight-cell"><img src="https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?w=300&q=80" /><div class="highlight-cell-date">May 30</div></div>
-                <div class="highlight-cell"><img src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=300&q=80" /><div class="highlight-cell-date">May 24</div></div>
+              <div class="highlights-month-label" style="margin-top:10px;">May 30</div>
+              <div class="highlights-grid reveal-stagger">
+                <div class="highlight-cell">
+                  <img src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=400&q=80" />
+                  <div class="highlight-cell-date">May 30</div>
+                </div>
+                <div class="highlight-cell">
+                  <img src="https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?w=400&q=80" />
+                  <div class="highlight-cell-date">May 24</div>
+                </div>
               </div>
             </div>
 
