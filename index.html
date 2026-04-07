@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BeReal — Prototype</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d0d;
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 36px 0 60px;
+      background-image: radial-gradient(ellipse 80% 50% at 50% 0%, #141428 0%, transparent 65%);
+    }
+
+    /* ── Demo switcher ── */
+    .demo-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 22px;
+    }
+    .demo-btn {
+      padding: 7px 18px;
+      border-radius: 999px;
+      border: 1px solid #2a2a2a;
+      background: #161616;
+      color: #666;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all 0.15s;
+    }
+    .demo-btn.active { background: #fff; color: #000; border-color: #fff; }
+    .demo-btn:hover:not(.active) { color: #ccc; border-color: #444; }
+
+    /* ── iPhone 16 frame ── */
+    .iphone-frame { position: relative; width: 430px; flex-shrink: 0; }
+    .iphone-chassis {
+      position: relative;
+      width: 430px;
+      background: linear-gradient(160deg, #2c2c2c 0%, #1a1a1a 40%, #232323 100%);
+      border-radius: 58px;
+      padding: 14px;
+      box-shadow:
+        0 0 0 1px #3a3a3a,
+        0 0 0 2px #111,
+        0 60px 120px rgba(0,0,0,0.9),
+        0 20px 40px rgba(0,0,0,0.6),
+        inset 0 1px 0 rgba(255,255,255,0.08),
+        inset 0 -1px 0 rgba(0,0,0,0.5);
+    }
+    .iphone-bezel {
+      background: #000;
+      border-radius: 46px;
+      overflow: hidden;
+      position: relative;
+      height: 852px;
+    }
+    .iphone-bezel::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 46px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 40%, rgba(0,0,0,0.08) 100%);
+      pointer-events: none;
+      z-index: 50;
+    }
+    .dynamic-island {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 34px;
+      background: #000;
+      border-radius: 20px;
+      z-index: 20;
+      box-shadow: 0 0 0 1px #1a1a1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .di-camera {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #0a0a0a;
+      border: 1.5px solid #1e1e1e;
+      position: relative;
+    }
+    .di-camera::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      border-radius: 50%;
+      background: #152030;
+    }
+    .iphone-screen {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: none;
+      position: relative;
+      -webkit-overflow-scrolling: touch;
+    }
+    .iphone-screen::-webkit-scrollbar { display: none; }
+    .btn-power { position: absolute; right: -3px; top: 160px; width: 4px; height: 76px; background: linear-gradient(to right, #252525, #383838, #252525); border-radius: 0 3px 3px 0; }
+    .btn-action { position: absolute; left: -3px; top: 128px; width: 4px; height: 38px; background: linear-gradient(to left, #252525, #383838, #252525); border-radius: 3px 0 0 3px; }
+    .btn-vol-up { position: absolute; left: -3px; top: 188px; width: 4px; height: 70px; background: linear-gradient(to left, #252525, #383838, #252525); border-radius: 3px 0 0 3px; }
+    .btn-vol-down { position: absolute; left: -3px; top: 270px; width: 4px; height: 70px; background: linear-gradient(to left, #252525, #383838, #252525); border-radius: 3px 0 0 3px; }
+    .usbc-port { position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%); width: 54px; height: 6px; background: #080808; border-radius: 3px 3px 0 0; }
+
+    /* ── Screen system ── */
+    .screen { display: none; min-height: 852px; background: #000; color: #fff; }
+    .screen.active { display: block; }
+
+    /* ── Status bar ── */
+    .status-bar {
+      position: absolute; top: 0; left: 0; right: 0; height: 50px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px 0;
+      z-index: 15; pointer-events: none;
+    }
+    .status-time { font-size: 15px; font-weight: 700; }
+    .status-icons { display: flex; align-items: center; gap: 5px; font-size: 13px; }
+    .status-battery {
+      width: 25px; height: 12px;
+      border: 1.5px solid rgba(255,255,255,0.5);
+      border-radius: 3px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      padding: 1px;
+    }
+    .status-battery::after {
+      content: '';
+      position: absolute;
+      right: -5px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 5px;
+      background: rgba(255,255,255,0.5);
+      border-radius: 0 1px 1px 0;
+    }
+    .battery-fill { height: 100%; width: 70%; background: #fff; border-radius: 1px; }
+
+    /* ── Nav bar ── */
+    .nav-bar {
+      position: absolute; top: 48px; left: 0; right: 0; height: 44px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px; z-index: 15;
+    }
+    .nav-btn {
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(8px);
+      border: none; color: #fff; font-size: 16px;
+      cursor: pointer; border-radius: 50%;
+      font-family: var(--font);
+    }
+    .nav-btn-ghost { background: none; backdrop-filter: none; }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      width: 100%; aspect-ratio: 1/1;
+      overflow: hidden;
+    }
+    .hero-img {
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: top center;
+      display: block;
+    }
+    .hero-gradient {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 200px;
+      background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 50%, transparent 100%);
+    }
+    .hero-top-fade {
+      position: absolute; top: 0; left: 0; right: 0; height: 110px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%);
+    }
+    .hero-profile {
+      position: absolute; bottom: 14px; left: 16px; right: 16px;
+      display: flex; align-items: flex-end; justify-content: space-between;
+    }
+    .streak-pill {
+      display: inline-flex; align-items: center; gap: 2px;
+      font-size: 13px; font-weight: 700;
+      margin-bottom: 6px;
+      color: rgba(255,255,255,0.9);
+    }
+    .profile-name {
+      font-size: 34px; font-weight: 800; letter-spacing: -0.8px;
+      line-height: 1; display: flex; align-items: center; gap: 6px;
+    }
+    .profile-handle {
+      font-size: 14px; color: rgba(255,255,255,0.6); margin-top: 4px;
+    }
+    .verify-badge {
+      width: 22px; height: 22px;
+      background: #1d9bf0; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px; flex-shrink: 0;
+    }
+    .hero-action-btn {
+      padding: 9px 18px;
+      border-radius: 10px;
+      border: 1.5px solid rgba(255,255,255,0.4);
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(10px);
+      color: #fff; font-size: 14px; font-weight: 600;
+      cursor: pointer; font-family: var(--font);
+      white-space: nowrap; flex-shrink: 0;
+      margin-bottom: 2px;
+    }
+    .hero-settings-btn {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(10px);
+      color: #fff; font-size: 16px;
+      cursor: pointer; font-family: var(--font);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-bottom: 2px;
+    }
+
+    /* ── Profile body ── */
+    .profile-body { padding: 14px 16px 0; }
+    .profile-location { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 8px; }
+    .profile-stats {
+      display: flex; align-items: center;
+      font-size: 13px; margin-bottom: 10px;
+    }
+    .stat-num { font-weight: 700; color: #fff; }
+    .stat-lbl { color: rgba(255,255,255,0.5); margin-left: 3px; }
+    .stat-sep { color: rgba(255,255,255,0.18); margin: 0 8px; font-size: 11px; }
+    .profile-bio { font-size: 13px; color: rgba(255,255,255,0.75); margin-bottom: 3px; line-height: 1.4; }
+    .profile-link { font-size: 13px; color: #60a5fa; margin-bottom: 10px; }
+    .mutual-row { display: flex; align-items: center; gap: 0; margin-bottom: 16px; }
+    .mutual-avatars { display: flex; margin-right: 10px; }
+    .mutual-avatar {
+      width: 24px; height: 24px; border-radius: 50%;
+      border: 2px solid #000; margin-right: -7px;
+      background: #222; overflow: hidden;
+    }
+    .mutual-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .mutual-text { font-size: 12px; color: rgba(255,255,255,0.45); padding-left: 4px; }
+    .action-buttons { display: flex; gap: 8px; margin-bottom: 20px; }
+    .action-btn {
+      flex: 1; padding: 10px 14px;
+      border-radius: 10px;
+      border: 1.5px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.07);
+      color: #fff; font-size: 14px; font-weight: 600;
+      cursor: pointer; font-family: var(--font);
+      transition: all 0.15s; text-align: center;
+    }
+    .action-btn:active { opacity: 0.7; transform: scale(0.97); }
+
+    /* ── Section header ── */
+    .section-hdr {
+      padding: 6px 16px 10px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .section-title { font-size: 16px; font-weight: 700; }
+    .section-meta { font-size: 12px; color: rgba(255,255,255,0.35); }
+
+    /* ── Photo grid (3-col) ── */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 2px;
+      margin-bottom: 6px;
+      padding: 0 16px;
+    }
+    .photo-cell {
+      position: relative; aspect-ratio: 3/4;
+      overflow: hidden; cursor: pointer; background: #111;
+      border-radius: 8px;
+    }
+    .photo-cell img.back { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .photo-cell img.front {
+      position: absolute; top: 5px; left: 5px;
+      width: 32px; height: 40px;
+      border-radius: 5px; border: 1.5px solid #000;
+      object-fit: cover;
+    }
+    .photo-cell-date {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 16px 6px 6px;
+      background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+    }
+    .photo-cell-date .d { font-size: 10px; font-weight: 700; color: #fff; }
+    .photo-cell-date .y { font-size: 9px; color: rgba(255,255,255,0.5); }
+
+    /* ── My Profile: stats cards ── */
+    .stats-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      padding: 0 16px; margin-bottom: 12px;
+    }
+    .stats-card {
+      flex: 1; background: #111; border-radius: 12px; padding: 12px 10px 12px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .sc-label { font-size: 9px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.4px; }
+    .sc-value { font-size: 13px; font-weight: 700; line-height: 1.3; }
+    .sc-sub { font-size: 9px; color: rgba(255,255,255,0.38); }
+    .sc-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      object-fit: cover; margin-bottom: 4px;
+    }
+    .sc-ontime {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 600; color: #4ade80; margin-top: 2px;
+    }
+    .ontime-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
+
+    /* ── Profile tabs ── */
+    .profile-tabs {
+      display: flex; gap: 0;
+      margin: 0 16px 14px;
+      background: #111; border-radius: 12px; padding: 4px;
+    }
+    .profile-tab {
+      flex: 1; padding: 8px 4px;
+      border-radius: 9px; border: none;
+      background: none; color: rgba(255,255,255,0.38);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: var(--font);
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      transition: all 0.15s;
+    }
+    .profile-tab.active { background: #2a2a2a; color: #fff; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ── Map tab ── */
+    .map-wrap {
+      width: 100%; height: 430px;
+      position: relative; overflow: hidden;
+      background: #2d3a4a;
+    }
+    #leaflet-map { width: 100%; height: 100%; }
+    .leaflet-control-attribution { display: none !important; }
+    /* Custom photo marker */
+    .photo-marker {
+      position: relative;
+      width: 52px; height: 52px;
+    }
+    .photo-marker img {
+      width: 52px; height: 52px;
+      border-radius: 12px;
+      border: 2.5px solid #fff;
+      object-fit: cover;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+      display: block;
+    }
+    .photo-marker .pin-badge {
+      position: absolute;
+      top: -6px; right: -6px;
+      background: #ff3b30; color: #fff;
+      border-radius: 999px; width: 18px; height: 18px;
+      font-size: 10px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      border: 1.5px solid #000;
+    }
+    .map-base {
+      width: 100%; height: 100%;
+      position: absolute; inset: 0;
+    }
+    /* Photo pins on map */
+    .map-pin {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      z-index: 1000;
+    }
+    .map-pin img {
+      width: 52px; height: 52px;
+      border-radius: 12px;
+      border: 2.5px solid #fff;
+      object-fit: cover;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+      display: block;
+    }
+    .map-pin-count {
+      position: absolute;
+      top: -6px; right: -6px;
+      background: #ff3b30; color: #fff;
+      border-radius: 999px; width: 18px; height: 18px;
+      font-size: 10px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      border: 1.5px solid #000;
+    }
+    .map-post-cta {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 12px 16px 16px;
+      background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+      z-index: 1000;
+    }
+
+    /* ── Memories tab ── */
+    .pins-scroll-section { margin-bottom: 2px; }
+    .pins-from-friends { font-size: 11px; color: rgba(255,255,255,0.35); padding: 0 16px 8px; }
+    .pins-scroll {
+      display: flex; gap: 6px;
+      padding: 0 16px;
+    }
+    .pin-thumb {
+      position: relative; flex: 1; aspect-ratio: 9/16;
+      border-radius: 10px; overflow: hidden; cursor: pointer;
+    }
+    .pin-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pin-thumb .front-mini {
+      position: absolute; top: 4px; left: 4px;
+      width: 24px; height: 30px;
+      border-radius: 4px; border: 1px solid #000;
+      object-fit: cover;
+    }
+    .pin-thumb-date {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 14px 5px 5px;
+      background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
+      font-size: 9px; font-weight: 700; color: #fff;
+    }
+
+    .all-memories-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 2px; margin-bottom: 4px;
+      padding: 0 16px;
+    }
+    .mem-cell {
+      position: relative; aspect-ratio: 3/4;
+      background: #111; overflow: hidden; cursor: pointer;
+      border-radius: 8px;
+    }
+    .mem-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .mem-num {
+      position: absolute; bottom: 5px; right: 6px;
+      font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    }
+
+    .highlights-section { padding: 16px 16px 8px; }
+    .highlights-month-label { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+    .highlights-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px; margin-bottom: 12px;
+    }
+    .highlight-cell {
+      position: relative; aspect-ratio: 3/4;
+      border-radius: 12px; overflow: hidden; cursor: pointer;
+    }
+    .highlight-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .highlight-cell-date {
+      position: absolute; bottom: 8px; left: 10px;
+      font-size: 11px; font-weight: 700;
+      color: rgba(255,255,255,0.85);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    }
+    .lets-go-btn {
+      display: inline-block;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 8px; padding: 7px 16px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; color: #fff; margin-bottom: 14px;
+      font-family: var(--font);
+    }
+    .see-all-btn {
+      display: block; text-align: center;
+      padding: 16px; font-size: 14px; font-weight: 600;
+      color: rgba(255,255,255,0.4); cursor: pointer;
+      border-top: 1px solid #181818;
+    }
+
+    /* ── Tags tab ── */
+    .tags-section-title {
+      font-size: 15px; font-weight: 700;
+      padding: 2px 16px 12px;
+    }
+
+    /* ── Bottom CTA ── */
+    .bottom-cta {
+      position: sticky; bottom: 0;
+      padding: 14px 96px 32px;
+      background: linear-gradient(to top, #000 65%, transparent);
+      z-index: 10; margin-top: 8px;
+    }
+    .post-btn {
+      width: 100%; padding: 15px;
+      background: #fff; color: #000;
+      border: none; border-radius: 14px;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer; font-family: var(--font);
+      letter-spacing: -0.2px;
+    }
+
+    /* ── Password gate ── */
+    #password-gate {
+      position: sticky; top: 0;
+      width: 100%; height: 852px;
+      margin-bottom: -852px;
+      background: #000; z-index: 999;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 22px;
+    }
+    .gate-logo { font-size: 44px; }
+    .gate-title { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -0.4px; }
+    .gate-sub { font-size: 14px; color: #555; margin-top: -14px; }
+    .gate-form { display: flex; flex-direction: column; gap: 10px; width: 270px; }
+    .gate-input {
+      background: #161616; border: 1.5px solid #2a2a2a;
+      border-radius: 12px; padding: 13px 16px;
+      font-size: 15px; color: #fff; outline: none;
+      font-family: var(--font); text-align: center; letter-spacing: 3px;
+      transition: border-color 0.15s;
+    }
+    .gate-input::placeholder { letter-spacing: 0; color: #444; }
+    .gate-input:focus { border-color: #444; }
+    .gate-input.error { border-color: #ef4444; animation: shake 0.3s ease; }
+    .gate-btn {
+      background: #fff; color: #000;
+      border: none; border-radius: 12px; padding: 13px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; font-family: var(--font);
+    }
+    .gate-error { font-size: 13px; color: #ef4444; text-align: center; min-height: 18px; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); }
+      75% { transform: translateX(8px); }
+    }
+    @keyframes fadeOut { to { opacity: 0; pointer-events: none; } }
+    .gate-fade-out { animation: fadeOut 0.4s ease forwards; }
+
+    /* ── Streak tag ── */
+    .streak-tag-wrap {
+      display: flex;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+      margin-bottom: -11px;
+    }
+    .streak-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #111;
+      border-radius: 999px;
+      padding: 5px 10px 5px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      position: relative;
+      animation: tagEntrance 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+      animation-delay: 0.6s;
+      opacity: 0;
+      letter-spacing: 0.1px;
+    }
+    .streak-tag .fire { font-size: 12px; line-height: 1; }
+
+    @keyframes tagEntrance {
+      0%   { opacity: 0; transform: translateY(12px) scale(0.85); }
+      60%  { transform: translateY(-3px) scale(1.04); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Sparkle elements */
+    .sparkle {
+      position: absolute;
+      pointer-events: none;
+      opacity: 0;
+      font-style: normal;
+      font-size: 9px;
+      color: #f5e642;
+    }
+    .sparkle:nth-child(1) { top: -9px;  left: 12px;  animation: sparkle1 1.6s ease 0.9s infinite; }
+    .sparkle:nth-child(2) { top: -8px;  right: 16px; animation: sparkle1 1.6s ease 1.25s infinite; }
+    .sparkle:nth-child(3) { bottom: -8px; left: 22px; animation: sparkle1 1.6s ease 1.55s infinite; }
+    .sparkle:nth-child(4) { top: 2px;   right: -7px; animation: sparkle1 1.6s ease 1.05s infinite; }
+    .sparkle:nth-child(5) { bottom: -7px; right: 24px; animation: sparkle1 1.6s ease 1.8s infinite; }
+
+    .sparkles-done .sparkle { animation: none !important; opacity: 0 !important; }
+
+    @keyframes sparkle1 {
+      0%   { opacity: 0; transform: scale(0.3) rotate(0deg); }
+      35%  { opacity: 1; transform: scale(1.15) rotate(25deg); }
+      65%  { opacity: 0.5; transform: scale(0.85) rotate(-10deg); }
+      100% { opacity: 0; transform: scale(0.2) rotate(40deg); }
+    }
+
+    /* ── Button entrance ── */
+    @keyframes btnSlideUp {
+      0%   { opacity: 0; transform: translateY(40px) scale(0.92); }
+      60%  { transform: translateY(-6px) scale(1.02); }
+      80%  { transform: translateY(3px) scale(0.99); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .post-btn {
+      animation: btnSlideUp 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      animation-delay: 0.3s;
+      opacity: 0;
+    }
+
+    /* ── Scroll-reveal base ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* staggered children */
+    .reveal-stagger > * {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+    }
+    .reveal-stagger.visible > *:nth-child(1) { opacity: 1; transform: none; transition-delay: 0s; }
+    .reveal-stagger.visible > *:nth-child(2) { opacity: 1; transform: none; transition-delay: 0.07s; }
+    .reveal-stagger.visible > *:nth-child(3) { opacity: 1; transform: none; transition-delay: 0.14s; }
+    .reveal-stagger.visible > *:nth-child(4) { opacity: 1; transform: none; transition-delay: 0.21s; }
+    .reveal-stagger.visible > *:nth-child(5) { opacity: 1; transform: none; transition-delay: 0.28s; }
+    .reveal-stagger.visible > *:nth-child(6) { opacity: 1; transform: none; transition-delay: 0.35s; }
+
+    /* photo grid cells pop in */
+    .photo-grid.reveal-stagger > .photo-cell,
+    .all-memories-grid.reveal-stagger > .mem-cell {
+      opacity: 0;
+      transform: scale(0.94);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .photo-grid.reveal-stagger.visible > .photo-cell,
+    .all-memories-grid.reveal-stagger.visible > .mem-cell {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* highlight cards slide in from sides */
+    .highlights-grid.reveal-stagger > .highlight-cell:nth-child(odd) {
+      opacity: 0; transform: translateX(-16px);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+    }
+    .highlights-grid.reveal-stagger > .highlight-cell:nth-child(even) {
+      opacity: 0; transform: translateX(16px);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+    }
+    .highlights-grid.reveal-stagger.visible > .highlight-cell {
+      opacity: 1; transform: none;
+    }
+    .highlights-grid.reveal-stagger.visible > .highlight-cell:nth-child(2) { transition-delay: 0.08s; }
+
+    /* divider */
+    .divider { height: 1px; background: #161616; margin: 4px 0; }
+  </style>
+</head>
+<body>
+
+<!-- Demo switcher -->
+<div class="demo-nav">
+  <button class="demo-btn active" onclick="showScreen('my-profile', this)">My Profile</button>
+  <button class="demo-btn" onclick="showScreen('friend-profile', this)">Friend</button>
+  <button class="demo-btn" onclick="showScreen('public-profile', this)">Public</button>
+</div>
+
+<div class="iphone-frame">
+  <div class="iphone-chassis">
+    <div class="btn-power"></div>
+    <div class="btn-action"></div>
+    <div class="btn-vol-up"></div>
+    <div class="btn-vol-down"></div>
+    <div class="usbc-port"></div>
+
+    <div class="iphone-bezel">
+      <div class="dynamic-island"><div class="di-camera"></div></div>
+
+      <div class="iphone-screen">
+
+        <!-- ── Password gate ── -->
+        <div id="password-gate">
+          <div class="gate-logo">📸</div>
+          <div class="gate-title">BeReal Prototype</div>
+          <div class="gate-sub">Enter password to preview</div>
+          <div class="gate-form">
+            <input id="gate-input" class="gate-input" type="password"
+              placeholder="Password"
+              onkeydown="if(event.key==='Enter') checkPassword()" />
+            <div class="gate-error" id="gate-error"></div>
+            <button class="gate-btn" onclick="checkPassword()">Continue →</button>
+          </div>
+        </div>
+
+        <!-- ════════════════════════════
+             MY PROFILE  (Abby)
+        ════════════════════════════ -->
+        <div class="screen active" id="screen-my-profile">
+
+          <!-- Status bar -->
+          <div class="status-bar">
+            <span class="status-time">9:42</span>
+            <div class="status-icons">
+              <span>▲▲▲</span>
+              <span>WiFi</span>
+              <div class="status-battery"><div class="battery-fill"></div></div>
+            </div>
+          </div>
+
+          <!-- Nav -->
+          <div class="nav-bar">
+            <div style="width:34px"></div>
+            <div style="display:flex;gap:8px;">
+              <button class="nav-btn nav-btn-ghost" style="font-size:18px;">⊞</button>
+              <button class="nav-btn nav-btn-ghost">⋯</button>
+            </div>
+          </div>
+
+          <!-- Hero -->
+          <div class="hero">
+            <img class="hero-img"
+              src="Profile/Abby.png"
+              alt="Abby" />
+            <div class="hero-top-fade"></div>
+            <div class="hero-gradient"></div>
+            <div class="hero-profile">
+              <div class="hero-identity">
+                <div class="streak-pill">🔥 134</div>
+                <div class="profile-name">Abby</div>
+                <div class="profile-handle">@abbylin</div>
+              </div>
+              <button class="hero-settings-btn">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="1" y="1" width="6" height="6" rx="1" stroke="white" stroke-width="1.5" fill="none"/>
+                  <rect x="3" y="3" width="2" height="2" fill="white"/>
+                  <rect x="11" y="1" width="6" height="6" rx="1" stroke="white" stroke-width="1.5" fill="none"/>
+                  <rect x="13" y="3" width="2" height="2" fill="white"/>
+                  <rect x="1" y="11" width="6" height="6" rx="1" stroke="white" stroke-width="1.5" fill="none"/>
+                  <rect x="3" y="13" width="2" height="2" fill="white"/>
+                  <rect x="11" y="11" width="2" height="2" fill="white"/>
+                  <rect x="14" y="11" width="3" height="2" fill="white"/>
+                  <rect x="11" y="14" width="2" height="3" fill="white"/>
+                  <rect x="14" y="14" width="3" height="3" fill="white"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Profile body -->
+          <div class="profile-body">
+            <div class="profile-location">Paris, France</div>
+            <div class="profile-stats">
+              <span class="stat-num">92</span><span class="stat-lbl">friends</span>
+              <span class="stat-sep">•</span>
+              <span class="stat-num">0</span><span class="stat-lbl">followers</span>
+              <span class="stat-sep">•</span>
+              <span class="stat-num">53</span><span class="stat-lbl">following</span>
+            </div>
+          </div>
+
+          <!-- Stats cards -->
+          <div class="stats-cards reveal-stagger">
+            <div class="stats-card">
+              <div class="sc-label">Best friend</div>
+              <img class="sc-avatar" src="https://i.pravatar.cc/60?img=12" />
+            </div>
+            <div class="stats-card">
+              <div class="sc-label">Timeliness</div>
+              <div class="sc-value">avg 52 min late</div>
+              <div class="sc-ontime"><div class="ontime-dot"></div>on time</div>
+            </div>
+            <div class="stats-card" style="padding:0;overflow:hidden;position:relative;">
+              <div style="padding:10px 10px 6px;position:relative;z-index:2;">
+                <div class="sc-label">Locations</div>
+              </div>
+              <!-- Mini map fills the card -->
+              <div style="position:relative;width:100%;flex:1;">
+                <svg viewBox="0 0 110 52" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">
+                  <rect width="110" height="52" fill="#1a1a1a"/>
+                  <path d="M0,28 L12,22 L24,24 L34,18 L46,20 L54,28 L52,38 L44,44 L34,46 L22,42 L12,38 L0,40 Z" fill="#2a2a2a"/>
+                  <path d="M22,42 L34,46 L42,54 L38,64 L28,66 L16,60 L14,50 Z" fill="#2a2a2a"/>
+                  <path d="M54,28 L66,22 L78,24 L82,34 L76,44 L64,46 L54,40 Z" fill="#2a2a2a"/>
+                  <path d="M64,46 L76,44 L84,52 L70,52 Z" fill="#2a2a2a"/>
+                  <path d="M82,14 L96,10 L108,16 L110,26 L100,32 L88,30 L80,22 Z" fill="#2a2a2a"/>
+                  <path d="M28,32 Q44,30 54,34 Q66,38 76,36" stroke="rgba(255,255,255,0.1)" stroke-width="0.8" fill="none"/>
+                  <path d="M36,20 Q38,32 36,44" stroke="rgba(255,255,255,0.08)" stroke-width="0.6" fill="none"/>
+                  <path d="M66,24 Q68,34 66,46" stroke="rgba(255,255,255,0.08)" stroke-width="0.6" fill="none"/>
+                  <circle cx="36" cy="32" r="3" fill="#fff" opacity="0.9"/>
+                  <circle cx="36" cy="32" r="1.2" fill="#1a1a1a"/>
+                  <circle cx="68" cy="34" r="2.5" fill="#fff" opacity="0.7"/>
+                  <circle cx="68" cy="34" r="1" fill="#1a1a1a"/>
+                  <circle cx="26" cy="46" r="2" fill="#fff" opacity="0.6"/>
+                  <circle cx="92" cy="20" r="2" fill="#fff" opacity="0.55"/>
+                  <circle cx="72" cy="48" r="1.5" fill="#fff" opacity="0.5"/>
+                </svg>
+              </div>
+              <div style="padding:6px 10px 10px;">
+                <div class="sc-value">12 places</div>
+                <div class="sc-sub">visited</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile tabs -->
+          <div class="profile-tabs reveal">
+            <button class="profile-tab active" onclick="switchProfileTab('memories', this)">Memories</button>
+            <button class="profile-tab" onclick="switchProfileTab('map', this)">Map</button>
+            <button class="profile-tab" onclick="switchProfileTab('tags', this)">Tags</button>
+          </div>
+
+          <!-- ── Memories tab ── -->
+          <div class="tab-pane active" id="my-tab-memories">
+
+            <!-- Pins -->
+            <div class="section-hdr">
+              <span class="section-title">Pins</span>
+            </div>
+            <div class="pins-scroll-section reveal">
+              <div class="pins-scroll reveal-stagger">
+                <div class="pin-thumb">
+                  <img src="Profile/Pin1Abby.png" />
+                  <img class="front-mini" src="Profile/Abby.png" />
+                  <div class="pin-thumb-date">January 12<br><span style="color:rgba(255,255,255,0.5);font-weight:400;">2022</span></div>
+                </div>
+                <div class="pin-thumb">
+                  <img src="Profile/Pin2Abby.png" />
+                  <img class="front-mini" src="Profile/Abby.png" />
+                  <div class="pin-thumb-date">April 13<br><span style="color:rgba(255,255,255,0.5);font-weight:400;">2022</span></div>
+                </div>
+                <div class="pin-thumb">
+                  <img src="Profile/Pin3Abby.png" />
+                  <img class="front-mini" src="Profile/Abby.png" />
+                  <div class="pin-thumb-date">June 25<br><span style="color:rgba(255,255,255,0.5);font-weight:400;">2023</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- All Memories -->
+            <div class="section-hdr reveal" style="margin-top:14px;">
+              <span class="section-title">All Memories</span>
+              <span class="section-meta">1110 memories</span>
+            </div>
+            <div class="all-memories-grid reveal-stagger">
+              <div class="mem-cell"><img src="Profile/Pin2Abby.png" /><div class="mem-num">70</div></div>
+              <div class="mem-cell"><img src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=300&q=70" /><div class="mem-num">27</div></div>
+              <div class="mem-cell"><img src="Profile/Pin3Abby.png" /></div>
+              <div class="mem-cell"><img src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=300&q=70" /></div>
+              <div class="mem-cell"><img src="Profile/Pin1Abby.png" /></div>
+              <div class="mem-cell"><img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&q=70" /></div>
+            </div>
+
+            <!-- Highlights -->
+            <div class="highlights-section">
+              <div class="highlights-month-label reveal" style="font-size:16px;margin-bottom:14px;">Highlights</div>
+
+              <div class="highlights-month-label">April</div>
+              <button class="lets-go-btn">Let's go →</button>
+              <div class="highlights-grid reveal-stagger">
+                <div class="highlight-cell">
+                  <img src="Profile/Pin2Abby.png" />
+                  <div class="highlight-cell-date">April 13</div>
+                </div>
+                <div class="highlight-cell">
+                  <img src="Profile/Pin3Abby.png" />
+                  <div class="highlight-cell-date">April 8</div>
+                </div>
+              </div>
+
+              <div class="highlights-month-label" style="margin-top:10px;">December 20</div>
+              <div class="highlights-grid reveal-stagger">
+                <div class="highlight-cell" style="grid-column:1/-1;aspect-ratio:3/4;">
+                  <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80" />
+                  <div class="highlight-cell-date">December 20</div>
+                </div>
+              </div>
+
+              <div class="highlights-month-label" style="margin-top:10px;">January 1</div>
+              <div class="highlights-grid reveal-stagger">
+                <div class="highlight-cell">
+                  <img src="https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&q=80" />
+                  <div class="highlight-cell-date">January 1</div>
+                </div>
+                <div class="highlight-cell">
+                  <img src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&q=80" />
+                  <div class="highlight-cell-date">January 3</div>
+                </div>
+              </div>
+
+              <div class="highlights-month-label" style="margin-top:10px;">August 13</div>
+              <div class="highlights-grid reveal-stagger">
+                <div class="highlight-cell">
+                  <img src="https://images.unsplash.com/photo-1519046904884-53103b34b206?w=400&q=80" />
+                  <div class="highlight-cell-date">August 13</div>
+                </div>
+                <div class="highlight-cell">
+                  <img src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=400&q=80" />
+                  <div class="highlight-cell-date">August 20</div>
+                </div>
+              </div>
+
+              <div class="highlights-month-label" style="margin-top:10px;">May 30</div>
+              <div class="highlights-grid reveal-stagger">
+                <div class="highlight-cell">
+                  <img src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=400&q=80" />
+                  <div class="highlight-cell-date">May 30</div>
+                </div>
+                <div class="highlight-cell">
+                  <img src="https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?w=400&q=80" />
+                  <div class="highlight-cell-date">May 24</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="see-all-btn">See all memories</div>
+
+            <div class="bottom-cta">
+              <div class="streak-tag-wrap">
+                <div class="streak-tag">
+                  <span class="sparkle">✦</span>
+                  <span class="sparkle">✦</span>
+                  <span class="sparkle">✦</span>
+                  <span class="sparkle">✦</span>
+                  <span class="sparkle">✦</span>
+                  <span class="fire">🔥</span> Keep your streak
+                </div>
+              </div>
+              <button class="post-btn">Post your BeReal.</button>
+            </div>
+          </div>
+
+          <!-- ── Map tab ── -->
+          <div class="tab-pane" id="my-tab-map">
+            <div class="map-wrap">
+              <div id="leaflet-map"></div>
+
+              <div class="map-post-cta">
+                <div class="streak-tag-wrap">
+                  <div class="streak-tag">
+                    <span class="sparkle">✦</span><span class="sparkle">✦</span>
+                    <span class="sparkle">✦</span><span class="sparkle">✦</span>
+                    <span class="sparkle">✦</span>
+                    <span class="fire">🔥</span> Keep your streak
+                  </div>
+                </div>
+                <button class="post-btn">Post your BeReal.</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Tags tab ── -->
+          <div class="tab-pane" id="my-tab-tags">
+            <div class="tags-section-title">BeReals you were tagged in</div>
+            <div class="photo-grid">
+              <div class="photo-cell">
+                <img class="back" src="https://images.unsplash.com/photo-1519046904884-53103b34b206?w=300&q=80" />
+                <img class="front" src="https://i.pravatar.cc/60?img=12" />
+                <div class="photo-cell-date"><div class="d">January 12</div><div class="y">2022</div></div>
+              </div>
+              <div class="photo-cell">
+                <img class="back" src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&q=80" />
+                <img class="front" src="https://i.pravatar.cc/60?img=22" />
+                <div class="photo-cell-date"><div class="d">April 13</div><div class="y">2022</div></div>
+              </div>
+              <div class="photo-cell">
+                <img class="back" src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=300&q=80" />
+                <img class="front" src="https://i.pravatar.cc/60?img=33" />
+                <div class="photo-cell-date"><div class="d">June 25</div><div class="y">2023</div></div>
+              </div>
+              <div class="photo-cell">
+                <img class="back" src="https://images.unsplash.com/photo-1501854140801-50d01698950b?w=300&q=80" />
+                <img class="front" src="https://i.pravatar.cc/60?img=44" />
+                <div class="photo-cell-date"><div class="d">January 12</div><div class="y">2022</div></div>
+              </div>
+              <div class="photo-cell">
+                <img class="back" src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=300&q=80" />
+                <img class="front" src="https://i.pravatar.cc/60?img=5" />
+                <div class="photo-cell-date"><div class="d">April 13</div><div class="y">2022</div></div>
+              </div>
+              <div class="photo-cell">
+                <img class="back" src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=300&q=80" />
+                <img class="front" src="https://i.pravatar.cc/60?img=16" />
+                <div class="photo-cell-date"><div class="d">June 25</div><div class="y">2022</div></div>
+              </div>
+              <div class="photo-cell">
+                <img class="back" src="https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?w=300&q=80" />
+                <img class="front" src="https://i.pravatar.cc/60?img=27" />
+                <div class="photo-cell-date"><div class="d">August 3</div><div class="y">2023</div></div>
+              </div>
+              <div class="photo-cell">
+                <img class="back" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=300&q=80" />
+                <img class="front" src="https://i.pravatar.cc/60?img=38" />
+                <div class="photo-cell-date"><div class="d">April 13</div><div class="y">2022</div></div>
+              </div>
+              <div class="photo-cell">
+                <img class="back" src="https://images.unsplash.com/photo-1439853949212-36589f1383a1?w=300&q=80" />
+                <img class="front" src="https://i.pravatar.cc/60?img=49" />
+                <div class="photo-cell-date"><div class="d">April 13</div><div class="y">2022</div></div>
+              </div>
+            </div>
+            <div class="bottom-cta">
+              <div class="streak-tag-wrap">
+                <div class="streak-tag">
+                  <span class="sparkle">✦</span>
+                  <span class="sparkle">✦</span>
+                  <span class="sparkle">✦</span>
+                  <span class="sparkle">✦</span>
+                  <span class="sparkle">✦</span>
+                  <span class="fire">🔥</span> Keep your streak
+                </div>
+              </div>
+              <button class="post-btn">Post your BeReal.</button>
+            </div>
+          </div>
+
+        </div><!-- /screen-my-profile -->
+
+
+        <!-- ════════════════════════════
+             FRIEND PROFILE  (Julius)
+        ════════════════════════════ -->
+        <div class="screen" id="screen-friend-profile">
+
+          <div class="status-bar">
+            <span class="status-time">9:42</span>
+            <div class="status-icons">
+              <span>▲▲▲</span><span>WiFi</span>
+              <div class="status-battery"><div class="battery-fill"></div></div>
+            </div>
+          </div>
+
+          <div class="nav-bar">
+            <button class="nav-btn" onclick="showScreen('my-profile', document.querySelector('.demo-btn'))">←</button>
+            <button class="nav-btn nav-btn-ghost">⋯</button>
+          </div>
+
+          <!-- Hero -->
+          <div class="hero">
+            <img class="hero-img"
+              src="Profile/Julius.png"
+              alt="Julius" />
+            <div class="hero-top-fade"></div>
+            <div class="hero-gradient"></div>
+            <div class="hero-profile">
+              <div class="hero-identity">
+                <div class="streak-pill">🔥 314</div>
+                <div class="profile-name">Julius</div>
+                <div class="profile-handle">@juliuspwood</div>
+              </div>
+              <button class="hero-action-btn">Message</button>
+            </div>
+          </div>
+
+          <!-- Profile body -->
+          <div class="profile-body">
+            <div class="profile-location">Paris, France</div>
+            <div class="profile-stats">
+              <span class="stat-num">253</span><span class="stat-lbl">friends</span>
+              <span class="stat-sep">•</span>
+              <span class="stat-num">25</span><span class="stat-lbl">followers</span>
+              <span class="stat-sep">•</span>
+              <span class="stat-num">98</span><span class="stat-lbl">following</span>
+            </div>
+            <div class="mutual-row">
+              <div class="mutual-avatars">
+                <div class="mutual-avatar"><img src="https://i.pravatar.cc/48?img=12" /></div>
+                <div class="mutual-avatar"><img src="https://i.pravatar.cc/48?img=22" /></div>
+                <div class="mutual-avatar"><img src="https://i.pravatar.cc/48?img=33" /></div>
+              </div>
+              <span class="mutual-text">Also friends with miaxx, abdu__l and 22 others</span>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Pins -->
+          <div class="section-hdr" style="padding-top:14px;">
+            <span class="section-title">Pins</span>
+          </div>
+          <div class="photo-grid">
+            <div class="photo-cell">
+              <img class="back" src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&q=80" />
+              <img class="front" src="https://i.pravatar.cc/60?img=68" />
+              <div class="photo-cell-date"><div class="d">January 12</div><div class="y">2022</div></div>
+            </div>
+            <div class="photo-cell">
+              <img class="back" src="https://images.unsplash.com/photo-1519046904884-53103b34b206?w=300&q=80" />
+              <img class="front" src="https://i.pravatar.cc/60?img=68" />
+              <div class="photo-cell-date"><div class="d">April 13</div><div class="y">2022</div></div>
+            </div>
+            <div class="photo-cell">
+              <img class="back" src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=300&q=80" />
+              <img class="front" src="https://i.pravatar.cc/60?img=68" />
+              <div class="photo-cell-date"><div class="d">June 25</div><div class="y">2023</div></div>
+            </div>
+          </div>
+
+          <!-- Public BeReals -->
+          <div class="section-hdr">
+            <span class="section-title">Public BeReals</span>
+          </div>
+          <div class="photo-grid">
+            <div class="photo-cell">
+              <img class="back" src="https://images.unsplash.com/photo-1501854140801-50d01698950b?w=300&q=80" />
+              <img class="front" src="https://i.pravatar.cc/60?img=68" />
+              <div class="photo-cell-date"><div class="d">January 12</div><div class="y">2022</div></div>
+            </div>
+            <div class="photo-cell">
+              <img class="back" src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=300&q=80" />
+              <img class="front" src="https://i.pravatar.cc/60?img=68" />
+              <div class="photo-cell-date"><div class="d">April 13</div><div class="y">2022</div></div>
+            </div>
+            <div class="photo-cell">
+              <img class="back" src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=300&q=80" />
+              <img class="front" src="https://i.pravatar.cc/60?img=68" />
+              <div class="photo-cell-date"><div class="d">June 25</div><div class="y">2023</div></div>
+            </div>
+          </div>
+
+        </div><!-- /screen-friend-profile -->
+
+
+        <!-- ════════════════════════════
+             PUBLIC PROFILE  (August)
+        ════════════════════════════ -->
+        <div class="screen" id="screen-public-profile">
+
+          <div class="status-bar">
+            <span class="status-time">9:42</span>
+            <div class="status-icons">
+              <span>▲▲▲</span><span>WiFi</span>
+              <div class="status-battery"><div class="battery-fill"></div></div>
+            </div>
+          </div>
+
+          <div class="nav-bar">
+            <button class="nav-btn" onclick="showScreen('my-profile', document.querySelector('.demo-btn'))">←</button>
+            <button class="nav-btn nav-btn-ghost">⋯</button>
+          </div>
+
+          <!-- Hero -->
+          <div class="hero">
+            <img class="hero-img"
+              src="Profile/August.png"
+              alt="August" />
+            <div class="hero-top-fade"></div>
+            <div class="hero-gradient"></div>
+            <div class="hero-profile">
+              <div class="hero-identity">
+                <div class="streak-pill">🔥 314</div>
+                <div class="profile-name">
+                  August
+                  <span class="verify-badge">✓</span>
+                </div>
+                <div class="profile-handle">@guuuust</div>
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:2px;">
+                <button class="hero-action-btn">Add as friend</button>
+                <button class="hero-action-btn">Follow</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile body -->
+          <div class="profile-body">
+            <div class="profile-bio">100% real fake</div>
+            <div class="profile-link">drinksupdate.com</div>
+            <div class="profile-location">Chicago, Illinois</div>
+            <div class="profile-stats">
+              <span class="stat-num">123</span><span class="stat-lbl">friends</span>
+              <span class="stat-sep">•</span>
+              <span class="stat-num">2.6k</span><span class="stat-lbl">followers</span>
+              <span class="stat-sep">•</span>
+              <span class="stat-num">25</span><span class="stat-lbl">following</span>
+            </div>
+            <div class="mutual-row">
+              <div class="mutual-avatars">
+                <div class="mutual-avatar"><img src="https://i.pravatar.cc/48?img=12" /></div>
+                <div class="mutual-avatar"><img src="https://i.pravatar.cc/48?img=22" /></div>
+                <div class="mutual-avatar"><img src="https://i.pravatar.cc/48?img=33" /></div>
+              </div>
+              <span class="mutual-text">Also followed by miaxx, abdu__l and 22 others</span>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Pins -->
+          <div class="section-hdr" style="padding-top:14px;">
+            <span class="section-title">Pins</span>
+          </div>
+          <div class="photo-grid">
+            <div class="photo-cell">
+              <img class="back" src="Profile/August.png" />
+              <img class="front" src="https://i.pravatar.cc/60?img=52" />
+              <div class="photo-cell-date"><div class="d">January 12</div><div class="y">2022</div></div>
+            </div>
+            <div class="photo-cell">
+              <img class="back" src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=300&q=80" />
+              <img class="front" src="https://i.pravatar.cc/60?img=52" />
+              <div class="photo-cell-date"><div class="d">April 13</div><div class="y">2022</div></div>
+            </div>
+            <div class="photo-cell">
+              <img class="back" src="https://images.unsplash.com/photo-1517760444937-f6397edcbbcd?w=300&q=80" />
+              <img class="front" src="https://i.pravatar.cc/60?img=52" />
+              <div class="photo-cell-date"><div class="d">June 25</div><div class="y">2023</div></div>
+            </div>
+          </div>
+
+          <!-- Public BeReals -->
+          <div class="section-hdr">
+            <span class="section-title">Public BeReals</span>
+          </div>
+          <div class="photo-grid">
+            <div class="photo-cell">
+              <img class="back" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=300&q=80" />
+              <img class="front" src="https://i.pravatar.cc/60?img=52" />
+              <div class="photo-cell-date"><div class="d">January 12</div><div class="y">2022</div></div>
+            </div>
+            <div class="photo-cell">
+              <img class="back" src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=300&q=80" />
+              <img class="front" src="https://i.pravatar.cc/60?img=52" />
+              <div class="photo-cell-date"><div class="d">April 13</div><div class="y">2022</div></div>
+            </div>
+            <div class="photo-cell">
+              <img class="back" src="https://images.unsplash.com/photo-1439853949212-36589f1383a1?w=300&q=80" />
+              <img class="front" src="https://i.pravatar.cc/60?img=52" />
+              <div class="photo-cell-date"><div class="d">June 25</div><div class="y">2022</div></div>
+            </div>
+          </div>
+
+        </div><!-- /screen-public-profile -->
+
+      </div><!-- /iphone-screen -->
+    </div><!-- /iphone-bezel -->
+  </div><!-- /iphone-chassis -->
+</div><!-- /iphone-frame -->
+
+<script>
+  // ── Password gate ──
+  const PASSWORD = 'bereal2026';
+
+  (function init() {
+    if (sessionStorage.getItem('br_auth') === '1') {
+      document.getElementById('password-gate').style.display = 'none';
+    } else {
+      setTimeout(() => document.getElementById('gate-input').focus(), 100);
+    }
+  })();
+
+  function checkPassword() {
+    const input = document.getElementById('gate-input');
+    const error = document.getElementById('gate-error');
+    if (input.value === PASSWORD) {
+      sessionStorage.setItem('br_auth', '1');
+      const gate = document.getElementById('password-gate');
+      gate.classList.add('gate-fade-out');
+      setTimeout(() => gate.style.display = 'none', 400);
+    } else {
+      error.textContent = 'Incorrect password.';
+      input.classList.add('error');
+      input.value = '';
+      setTimeout(() => { input.classList.remove('error'); error.textContent = ''; input.focus(); }, 800);
+    }
+  }
+
+  // ── Scroll reveal (observes inside the iPhone scroll container) ──
+  function initReveal() {
+    const scroller = document.querySelector('.iphone-screen');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { root: scroller, threshold: 0.12 });
+
+    document.querySelectorAll('.reveal, .reveal-stagger').forEach(el => {
+      observer.observe(el);
+    });
+  }
+
+  // Re-run when switching screens/tabs so newly shown elements animate in
+  function reObserve() {
+    setTimeout(initReveal, 50);
+  }
+
+  initReveal();
+
+  // ── Leaflet map ──
+  var leafletMap = null;
+
+  function photoIcon(src, count) {
+    const badge = count ? `<div class="pin-badge">${count}</div>` : '';
+    return L.divIcon({
+      className: '',
+      html: `<div class="photo-marker"><img src="${src}" />${badge}</div>`,
+      iconSize: [52, 52],
+      iconAnchor: [26, 26]
+    });
+  }
+
+  function initLeafletMap() {
+    if (leafletMap) return;
+    leafletMap = L.map('leaflet-map', {
+      zoomControl: false,
+      scrollWheelZoom: true,
+      center: [47.0, 2.5],
+      zoom: 6
+    });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19
+    }).addTo(leafletMap);
+
+    // Photo pins at real coordinates
+    L.marker([48.85,  2.35], { icon: photoIcon('Profile/Pin1Abby.png', 3) }).addTo(leafletMap);
+    L.marker([46.5,   7.5 ], { icon: photoIcon('Profile/Pin3Abby.png') }).addTo(leafletMap);
+    L.marker([51.5,  -0.12], { icon: photoIcon('https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=120&q=80') }).addTo(leafletMap);
+    L.marker([52.4,   4.9 ], { icon: photoIcon('Profile/Pin2Abby.png', 2) }).addTo(leafletMap);
+    L.marker([45.75,  4.83], { icon: photoIcon('https://images.unsplash.com/photo-1501854140801-50d01698950b?w=120&q=80') }).addTo(leafletMap);
+  }
+
+  // Animate only the initially visible post-btn; lock all others immediately
+  document.querySelectorAll('.post-btn').forEach(btn => {
+    const inActiveTab = btn.closest('.tab-pane.active, .map-wrap');
+    if (!inActiveTab) {
+      btn.style.animation = 'none';
+      btn.style.opacity = '1';
+    } else {
+      btn.addEventListener('animationend', function() {
+        this.style.animation = 'none';
+        this.style.opacity = '1';
+      }, { once: true });
+    }
+  });
+
+  // Stop sparkles after 5s
+  setTimeout(() => {
+    document.querySelectorAll('.streak-tag').forEach(t => t.classList.add('sparkles-done'));
+  }, 5000);
+
+  // ── Screen switcher ──
+  function showScreen(name, _btn) {
+    // update demo buttons
+    document.querySelectorAll('.demo-btn').forEach((b, i) => {
+      const names = ['my-profile', 'friend-profile', 'public-profile'];
+      b.classList.toggle('active', names[i] === name);
+    });
+    // swap screen
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + name).classList.add('active');
+    // scroll to top
+    document.querySelector('.iphone-screen').scrollTop = 0;
+    reObserve();
+  }
+
+  // ── My Profile sub-tabs ──
+  function switchProfileTab(name, el) {
+    document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('my-tab-' + name).classList.add('active');
+    document.querySelector('.iphone-screen').scrollTop = 0;
+    reObserve();
+    if (name === 'map') {
+      initLeafletMap();
+      setTimeout(() => leafletMap && leafletMap.invalidateSize(), 50);
+    }
+  }
+</script>
+</body>
+</html>
