@@ -689,9 +689,10 @@
       backdrop-filter: blur(6px);
       z-index: 200;
       opacity: 0;
+      pointer-events: none;
       transition: opacity 0.3s ease;
     }
-    .qr-backdrop.visible { opacity: 1; }
+    .qr-backdrop.visible { opacity: 1; pointer-events: all; }
 
     .qr-sheet {
       position: fixed;
