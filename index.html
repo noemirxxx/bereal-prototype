@@ -73,6 +73,7 @@
       position: relative;
       height: 852px;
     }
+
     .iphone-bezel::after {
       content: '';
       position: absolute;
@@ -684,7 +685,7 @@
 
     /* ── QR Modal ── */
     .qr-backdrop {
-      position: fixed; inset: 0;
+      position: absolute; inset: 0;
       background: rgba(0,0,0,0.7);
       backdrop-filter: blur(6px);
       z-index: 200;
@@ -695,15 +696,14 @@
     .qr-backdrop.visible { opacity: 1; pointer-events: all; }
 
     .qr-sheet {
-      position: fixed;
-      bottom: 0; left: 50%;
-      transform: translateX(-50%) translateY(100%);
-      width: 390px;
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      transform: translateY(100%);
       z-index: 201;
       padding: 0 20px 36px;
       transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    .qr-sheet.visible { transform: translateX(-50%) translateY(0); }
+    .qr-sheet.visible { transform: translateY(0); }
 
     .qr-card {
       background: #fff;
@@ -1393,31 +1393,32 @@
         </div><!-- /screen-public-profile -->
 
       </div><!-- /iphone-screen -->
+
+      <!-- ── QR Modal (inside bezel so it's clipped to phone) ── -->
+      <div class="qr-backdrop" id="qr-backdrop" onclick="closeQR()"></div>
+      <div class="qr-sheet" id="qr-sheet">
+        <div class="qr-card">
+          <div class="qr-card-top">
+            <div class="qr-wordmark">BeReal.</div>
+            <img class="qr-profile-photo" src="Profile/Abby.png" />
+            <div class="qr-name">Abby</div>
+            <div class="qr-handle">@abbylin</div>
+          </div>
+          <div class="qr-card-bottom" id="qr-card-bottom">
+            <div id="qr-code-canvas"></div>
+            <div class="qr-scan-label">Scan to add me on BeReal</div>
+            <div class="qr-actions">
+              <button class="qr-action-btn primary" onclick="shareQR()">Share</button>
+              <button class="qr-action-btn secondary" onclick="copyLink()">Copy link</button>
+            </div>
+          </div>
+        </div>
+        <button class="qr-close-btn" onclick="closeQR()">Close</button>
+      </div>
+
     </div><!-- /iphone-bezel -->
   </div><!-- /iphone-chassis -->
 </div><!-- /iphone-frame -->
-
-<!-- ── QR Modal ── -->
-<div class="qr-backdrop" id="qr-backdrop" onclick="closeQR()"></div>
-<div class="qr-sheet" id="qr-sheet">
-  <div class="qr-card">
-    <div class="qr-card-top">
-      <div class="qr-wordmark">BeReal.</div>
-      <img class="qr-profile-photo" src="Profile/Abby.png" />
-      <div class="qr-name">Abby</div>
-      <div class="qr-handle">@abbylin</div>
-    </div>
-    <div class="qr-card-bottom" id="qr-card-bottom">
-      <div id="qr-code-canvas"></div>
-      <div class="qr-scan-label">Scan to add me on BeReal</div>
-      <div class="qr-actions">
-        <button class="qr-action-btn primary" onclick="shareQR()">Share</button>
-        <button class="qr-action-btn secondary" onclick="copyLink()">Copy link</button>
-      </div>
-    </div>
-  </div>
-  <button class="qr-close-btn" onclick="closeQR()">Close</button>
-</div>
 
 <script>
   // ── Password gate ──
